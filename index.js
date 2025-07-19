@@ -6,6 +6,4 @@ export const name = "@token-ring/local-chat-storage";
 export const description = "Chat Service that stores the state of the chat";
 export const version = "0.1.0";
 
-
-
 export default {};
