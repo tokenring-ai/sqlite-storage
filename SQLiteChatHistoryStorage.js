@@ -103,7 +103,7 @@ export default class SQLiteChatHistoryStorage extends ChatHistoryService {
 	 * @param {string|number} [sessionId] - Optional session ID to limit search scope (not implemented in this version).
 	 * @returns {Promise<Array<import('@token-ring/history/ChatHistoryService').ChatHistoryMessage>>} Array of matching messages ordered by creation date (newest first).
 	 */
-	async searchMessages(keyword, sessionId) {
+	async searchMessages(keyword, _sessionId) {
 		if (!keyword) return [];
 
 		const sql = `

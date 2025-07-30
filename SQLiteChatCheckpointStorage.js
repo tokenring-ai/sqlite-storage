@@ -50,7 +50,7 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
 	 * @returns {Promise<import('@token-ring/history/CheckpointService').Checkpoint>} The created checkpoint.
 	 * @throws {Error} When currentMessage is invalid or database operation fails.
 	 */
-	async createCheckpoint(label, currentMessage, sessionId) {
+	async createCheckpoint(label, currentMessage, _sessionId) {
 		if (!currentMessage || !currentMessage.id) {
 			throw new Error(
 				"Invalid currentMessage provided for checkpoint creation",
@@ -74,7 +74,7 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
 	 * @param {string|number} [sessionId] - Session ID (not used in this implementation but kept for interface compatibility).
 	 * @returns {Promise<import('@token-ring/history/CheckpointService').Checkpoint|null>} The retrieved checkpoint or null if not found.
 	 */
-	async retrieveCheckpoint(idx, sessionId) {
+	async retrieveCheckpoint(idx, _sessionId) {
 		const checkpointsQuery = `
       SELECT * FROM Checkpoint 
       ORDER BY createdAt DESC 
@@ -89,7 +89,7 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
 	 * @param {string|number} [sessionId] - Session ID (not used in this implementation but kept for interface compatibility).
 	 * @returns {Promise<Array<import('@token-ring/history/CheckpointService').Checkpoint>>} Array of checkpoints.
 	 */
-	async listCheckpoint(sessionId) {
+	async listCheckpoint(_sessionId) {
 		const listQuery = "SELECT * FROM Checkpoint ORDER BY createdAt DESC";
 		return this.db.prepare(listQuery).all();
 	}
