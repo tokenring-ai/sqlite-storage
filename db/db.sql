@@ -1,4 +1,3 @@
-export default `
 CREATE TABLE IF NOT EXISTS ChatSession (
                           id INTEGER PRIMARY KEY AUTOINCREMENT,
                           title TEXT,
@@ -23,4 +22,3 @@ CREATE TABLE IF NOT EXISTS Checkpoint (
                          messageId INTEGER NOT NULL,
                          createdAt INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
 );
- `;

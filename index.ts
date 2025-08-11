@@ -1,6 +1,6 @@
-export { default as SQLiteChatCheckpointStorage } from "./SQLiteChatCheckpointStorage";
-export { default as SQLiteChatHistoryStorage } from "./SQLiteChatHistoryStorage";
-export { default as SQLiteChatMessageStorage } from "./SQLiteChatMessageStorage";
+export { default as SQLiteChatCheckpointStorage } from "./SQLiteChatCheckpointStorage.ts";
+export { default as SQLiteChatHistoryStorage } from "./SQLiteChatHistoryStorage.ts";
+export { default as SQLiteChatMessageStorage } from "./SQLiteChatMessageStorage.ts";
 
 export const name = "@token-ring/local-chat-storage";
 export const description = "Chat Service that stores the state of the chat";

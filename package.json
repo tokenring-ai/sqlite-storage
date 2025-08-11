@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"dependencies": {
 		"@token-ring/ai-client": "0.1.0",
-		"@token-ring/eslint-config": "0.0.0",
+
 		"@token-ring/history": "0.1.0",
 		"@token-ring/registry": "0.1.0"
 	},
@@ -13,8 +13,8 @@
 	},
 	"license": "MIT",
 	"scripts": {
-		"lint": "eslint ",
-		"eslint": "eslint --fix ./"
+
+
 	},
 	"type": "module"
 }
