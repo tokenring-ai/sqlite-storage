@@ -1,4 +1,7 @@
 import ChatHistoryService from "@token-ring/history/ChatHistoryService";
+import {StoredChatMessage, StoredChatSession} from "@token-ring/ai-client/ChatMessageStorage";
+// @ts-ignore
+import {Database} from "bun:sqlite";
 
 /**
  * SQLite-based implementation of ChatHistoryService that provides persistent
@@ -26,17 +29,17 @@ export default class SQLiteChatHistoryStorage extends ChatHistoryService {
   description = "Provides LocalChatHistory functionality";
 
   /** The SQLite database connection. */
-  db: any;
+  private db: Database;
 
-  /**
+    /**
    * Creates a new SQLiteChatHistoryStorage instance.
    *
    * @param {Object} options - Configuration options.
    * @param options.db - Database connection object.
    * @throws {Error} When db object is not provided.
    */
-  constructor({ db }: { db: any }) {
-    super();
+    constructor({db}: { db: Database }) {
+        super();
     if (!db) {
       throw new Error("Missing db object in constructor");
     }
@@ -46,7 +49,7 @@ export default class SQLiteChatHistoryStorage extends ChatHistoryService {
   /**
    * Returns all chat sessions ordered by creation date (newest first).
    */
-  async listSessions(): Promise<any[]> {
+  async listSessions(): Promise<StoredChatSession[]> {
     const sql = `
       SELECT id, title, createdAt
       FROM ChatSession
@@ -59,10 +62,9 @@ export default class SQLiteChatHistoryStorage extends ChatHistoryService {
    * Gets the complete thread tree for a session, showing all messages in chronological order.
    * This provides the full conversation flow with message relationships.
    */
-  async getThreadTree(sessionId: string | number): Promise<any[]> {
+  async getThreadTree(sessionId: string): Promise<StoredChatMessage[]> {
     const sql = `
-      SELECT id, previousMessageId, sessionId, request, response, cumulativeInputLength,
-             priorState, createdAt, updatedAt
+      SELECT id, previousMessageId, sessionId, request, response, createdAt, updatedAt
       FROM ChatMessage
       WHERE sessionId = ?
       ORDER BY createdAt
@@ -74,10 +76,9 @@ export default class SQLiteChatHistoryStorage extends ChatHistoryService {
    * Gets the N most recent messages from a session.
    * Messages are returned in chronological order (oldest first) after being limited and reversed.
    */
-  async getRecentMessages(sessionId: string | number, limit = 10): Promise<any[]> {
+  async getRecentMessages(sessionId: string, limit = 10): Promise<any[]> {
     const sql = `
-      SELECT id, previousMessageId, sessionId, request, response, cumulativeInputLength,
-             priorState, createdAt, updatedAt
+      SELECT id, previousMessageId, sessionId, request, response, createdAt, updatedAt
       FROM ChatMessage
       WHERE sessionId = ?
       ORDER BY createdAt
@@ -90,12 +91,11 @@ export default class SQLiteChatHistoryStorage extends ChatHistoryService {
    * Searches for messages containing the specified keyword in request or response content.
    * Performs a case-insensitive LIKE search across both request and response fields.
    */
-  async searchMessages(keyword: string, _sessionId?: string | number): Promise<any[]> {
+  async searchMessages(keyword: string, _sessionId?: string): Promise<StoredChatMessage[]> {
     if (!keyword) return [];
 
     const sql = `
-      SELECT id, previousMessageId, sessionId, request, response, cumulativeInputLength,
-             priorState, createdAt, updatedAt
+      SELECT id, previousMessageId, sessionId, request, response, createdAt, updatedAt
       FROM ChatMessage
       WHERE request LIKE ? OR response LIKE ?
       ORDER BY createdAt DESC
@@ -109,17 +109,16 @@ export default class SQLiteChatHistoryStorage extends ChatHistoryService {
    * Uses a recursive CTE to traverse the message chain backwards from the specified message.
    * This reconstructs the full conversation context for the given message.
    */
-  async getChatHistoryByMessageId(messageId: string | number): Promise<any[]> {
+  async getChatHistoryByMessageId(messageId: string): Promise<StoredChatMessage[]> {
     const sql = `
       WITH RECURSIVE message_history(id, previousMessageId, sessionId, request, response,
-                                    cumulativeInputLength, priorState, createdAt, updatedAt) AS (
-        SELECT id, previousMessageId, sessionId, request, response, cumulativeInputLength,
-               priorState, createdAt, updatedAt
+                                    createdAt, updatedAt) AS (
+        SELECT id, previousMessageId, sessionId, request, response, createdAt, updatedAt
         FROM ChatMessage
         WHERE id = ?
         UNION ALL
         SELECT cm.id, cm.previousMessageId, cm.sessionId, cm.request, cm.response,
-               cm.cumulativeInputLength, cm.priorState, cm.createdAt, cm.updatedAt
+               cm.createdAt, cm.updatedAt
         FROM ChatMessage cm
               INNER JOIN message_history mh ON cm.id = mh.previousMessageId
       )

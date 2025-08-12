@@ -1,4 +1,4 @@
-import CheckpointService from "@token-ring/history/CheckpointService";
+import CheckpointService, {Checkpoint} from "@token-ring/history/CheckpointService";
 
 /**
  * SQLite-based implementation of CheckpointService that provides persistent
@@ -44,7 +44,7 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
    * Creates a new checkpoint for the specified message.
    * Stores the checkpoint with a label and links it to the current message.
    */
-  async createCheckpoint(label: string, currentMessage: any, _sessionId?: string | number): Promise<any> {
+  async createCheckpoint(label: string, currentMessage: any, _sessionId?: string): Promise<any> {
     if (!currentMessage || !currentMessage.id) {
       throw new Error(
         "Invalid currentMessage provided for checkpoint creation",
@@ -64,19 +64,19 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
    * Retrieves a checkpoint by its index (0-based, ordered by creation date descending).
    * Index 0 returns the most recent checkpoint, index 1 the second most recent, etc.
    */
-  async retrieveCheckpoint(idx: number, _sessionId?: string | number): Promise<any | null> {
+  async retrieveCheckpoint(_idxOrId: string | undefined, _sessionId?: string): Promise<Checkpoint | null> {
     const checkpointsQuery = `
       SELECT * FROM Checkpoint 
       ORDER BY createdAt DESC 
       LIMIT 1 OFFSET ?
     `;
-    return this.db.prepare(checkpointsQuery).get([idx]);
+    return this.db.prepare(checkpointsQuery).get([_idxOrId]);
   }
 
   /**
    * Lists all checkpoints ordered by creation date (newest first).
    */
-  async listCheckpoint(_sessionId?: string | number): Promise<any[]> {
+  async listCheckpoint(_sessionId?: string): Promise<any[]> {
     const listQuery = "SELECT * FROM Checkpoint ORDER BY createdAt DESC";
     return this.db.prepare(listQuery).all();
   }

@@ -1,4 +1,6 @@
 import { ChatMessageStorage } from "@token-ring/ai-client";
+import { Body, Response } from "@token-ring/chat/ChatService";
+import {StoredChatMessage} from "@token-ring/ai-client/ChatMessageStorage";
 
 /**
  * SQLite-based implementation of ChatMessageStorage that provides persistent
@@ -45,9 +47,11 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
    * @returns The stored message with parsed request and response.
    * @throws {Error} If the database operation fails.
    */
-  storeChat(currentMessage: any, request: any, response: any): any {
-    let sessionId = currentMessage?.sessionId;
-    if (!sessionId) {
+  async storeChat(currentMessage: StoredChatMessage, request: Body, response: Response): Promise<StoredChatMessage> {
+    let sessionId: number;
+    if (currentMessage?.sessionId) {
+        sessionId = parseInt(currentMessage.sessionId);
+    } else {
       const lastMessage = request.messages?.[request.messages.length - 1];
 
       const title =
@@ -72,7 +76,7 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
                              request,
                              response)
        VALUES (?, ?, ?, ?)
-       RETURNING *`,
+       RETURNING id, sessionId, previousMessageId, request, response`,
       )
       .get(
         sessionId,
@@ -81,9 +85,7 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
         JSON.stringify(response),
       );
 
-    msg.request = JSON.parse(msg.request);
-    msg.response = JSON.parse(msg.response);
-    return msg;
+    return formatMessage(msg);
   }
 
   /**
@@ -94,7 +96,7 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
    * @returns The retrieved message with parsed request and response.
    * @throws {Error} When message is not found or database error occurs.
    */
-  async retrieveMessageById(id: number | string): Promise<any> {
+  async retrieveMessageById(id: string): Promise<StoredChatMessage> {
     const data = this.db
       .prepare(
         `SELECT *
@@ -107,8 +109,18 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
       throw new Error(`Message with id ${id} not found`);
     }
 
-    data.request = JSON.parse(data.request);
-    data.response = data.response ? JSON.parse(data.response) : null;
-    return data;
+    return formatMessage(data);
   }
+}
+
+function formatMessage(msg: any): StoredChatMessage {
+    return {
+        id: msg.id.toString(),
+        sessionId: msg.sessionId.toString(),
+        request: JSON.parse(msg.request),
+        response: msg.response ? JSON.parse(msg.response) : null,
+        previousMessageId: msg.previousMessageId?.toString?.(),
+        createdAt: msg.createdAt as number,
+        updatedAt: msg.updatedAt as number
+    }
 }
