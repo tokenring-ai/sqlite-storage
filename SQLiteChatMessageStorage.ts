@@ -1,5 +1,5 @@
-import { ChatMessageStorage } from "@token-ring/ai-client";
-import { Body, Response } from "@token-ring/chat/ChatService";
+import {ChatMessageStorage} from "@token-ring/ai-client";
+import {Body, Response} from "@token-ring/chat/ChatService";
 import {StoredChatMessage} from "@token-ring/ai-client/ChatMessageStorage";
 
 /**
