@@ -1,6 +1,6 @@
 import {ChatMessageStorage} from "@token-ring/ai-client";
-import {Body, Response} from "@token-ring/chat/ChatService";
 import {StoredChatMessage} from "@token-ring/ai-client/ChatMessageStorage";
+import {Body, Response} from "@token-ring/chat/ChatService";
 
 /**
  * SQLite-based implementation of ChatMessageStorage that provides persistent
@@ -30,7 +30,7 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
    * @param options.db - Database connection object.
    * @throws {Error} When db object is not provided.
    */
-  constructor({ db }: { db: any }) {
+  constructor({db}: { db: any }) {
     super();
     if (!db) {
       throw new Error("Missing db object in constructor");
@@ -50,7 +50,7 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
   async storeChat(currentMessage: StoredChatMessage, request: Body, response: Response): Promise<StoredChatMessage> {
     let sessionId: number;
     if (currentMessage?.sessionId) {
-        sessionId = parseInt(currentMessage.sessionId);
+      sessionId = parseInt(currentMessage.sessionId);
     } else {
       const lastMessage = request.messages?.[request.messages.length - 1];
 
@@ -114,13 +114,13 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
 }
 
 function formatMessage(msg: any): StoredChatMessage {
-    return {
-        id: msg.id.toString(),
-        sessionId: msg.sessionId.toString(),
-        request: JSON.parse(msg.request),
-        response: msg.response ? JSON.parse(msg.response) : null,
-        previousMessageId: msg.previousMessageId?.toString?.(),
-        createdAt: msg.createdAt as number,
-        updatedAt: msg.updatedAt as number
-    }
+  return {
+    id: msg.id.toString(),
+    sessionId: msg.sessionId.toString(),
+    request: JSON.parse(msg.request),
+    response: msg.response ? JSON.parse(msg.response) : null,
+    previousMessageId: msg.previousMessageId?.toString?.(),
+    createdAt: msg.createdAt as number,
+    updatedAt: msg.updatedAt as number
+  }
 }

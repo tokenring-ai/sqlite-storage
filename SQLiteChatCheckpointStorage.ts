@@ -32,7 +32,7 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
    * @param options.db - Database connection object.
    * @throws {Error} When db object is not provided.
    */
-  constructor({ db }: { db: any }) {
+  constructor({db}: { db: any }) {
     super();
     if (!db) {
       throw new Error("Missing db object in constructor");
@@ -52,9 +52,9 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
     }
 
     const insertQuery = `
-      INSERT INTO Checkpoint (label, messageId)
-      VALUES (?, ?)
-      RETURNING *
+     INSERT INTO Checkpoint (label, messageId)
+     VALUES (?, ?)
+     RETURNING *
     `;
 
     return this.db.prepare(insertQuery).get([label, currentMessage.id]);
@@ -66,9 +66,10 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
    */
   async retrieveCheckpoint(_idxOrId: string | undefined, _sessionId?: string): Promise<Checkpoint | null> {
     const checkpointsQuery = `
-      SELECT * FROM Checkpoint 
-      ORDER BY createdAt DESC 
-      LIMIT 1 OFFSET ?
+     SELECT *
+     FROM Checkpoint
+     ORDER BY createdAt DESC
+     LIMIT 1 OFFSET ?
     `;
     return this.db.prepare(checkpointsQuery).get([_idxOrId]);
   }

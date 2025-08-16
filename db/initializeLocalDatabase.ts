@@ -7,5 +7,5 @@ export default function initializeLocalDatabase(databaseFile: string) {
 
   db.exec(sql);
 
-  return db ;
+  return db;
 }

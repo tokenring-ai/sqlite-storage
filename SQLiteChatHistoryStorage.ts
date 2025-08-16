@@ -1,5 +1,5 @@
-import ChatHistoryService from "@token-ring/history/ChatHistoryService";
 import {StoredChatMessage, StoredChatSession} from "@token-ring/ai-client/ChatMessageStorage";
+import ChatHistoryService from "@token-ring/history/ChatHistoryService";
 // @ts-ignore
 import {Database} from "bun:sqlite";
 
@@ -31,15 +31,15 @@ export default class SQLiteChatHistoryStorage extends ChatHistoryService {
   /** The SQLite database connection. */
   private db: Database;
 
-    /**
+  /**
    * Creates a new SQLiteChatHistoryStorage instance.
    *
    * @param {Object} options - Configuration options.
    * @param options.db - Database connection object.
    * @throws {Error} When db object is not provided.
    */
-    constructor({db}: { db: Database }) {
-        super();
+  constructor({db}: { db: Database }) {
+    super();
     if (!db) {
       throw new Error("Missing db object in constructor");
     }
