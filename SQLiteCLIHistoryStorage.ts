@@ -77,9 +77,9 @@ export default class SQLiteCLIHistoryStorage extends HistoryStorage {
     try {
       const timestamp = Date.now();
       const insertSql = `
-             INSERT INTO CommandHistory (command, timestamp)
-             VALUES (?, ?)
-            `;
+       INSERT INTO CommandHistory (command, timestamp)
+       VALUES (?, ?)
+      `;
 
       this.db.prepare(insertSql).run([command, timestamp]);
 
@@ -89,13 +89,13 @@ export default class SQLiteCLIHistoryStorage extends HistoryStorage {
       // If history exceeds limit, trim the oldest entries from the database
       if (this.history.length > (this.config.limit || 200)) {
         const deleteOldestSql = `
-                 DELETE FROM CommandHistory
-                 WHERE id NOT IN (
-                  SELECT id FROM CommandHistory
-                  ORDER BY timestamp DESC
-                  LIMIT ?
-                 )
-                `;
+         DELETE
+         FROM CommandHistory
+         WHERE id NOT IN (SELECT id
+                          FROM CommandHistory
+                          ORDER BY timestamp DESC
+                          LIMIT ?)
+        `;
 
         this.db.prepare(deleteOldestSql).run([this.config.limit || 200]);
 
@@ -176,11 +176,11 @@ export default class SQLiteCLIHistoryStorage extends HistoryStorage {
   private load(): void {
     try {
       const sql = `
-             SELECT command
-             FROM CommandHistory
-             ORDER BY timestamp DESC
-             LIMIT ?
-            `;
+       SELECT command
+       FROM CommandHistory
+       ORDER BY timestamp DESC
+       LIMIT ?
+      `;
 
       const rows = this.db.prepare(sql).all([this.config.limit]) as CommandHistoryRow[];
       // Store history in reverse order (oldest first) for easier navigation
