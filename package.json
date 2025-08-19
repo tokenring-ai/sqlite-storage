@@ -1,21 +1,18 @@
 {
-	"name": "@token-ring/sqlite-storage",
-	"version": "0.1.0",
+ "name": "@token-ring/sqlite-storage",
+ "version": "0.1.0",
  "description": "SQLite storage for Token Ring",
-	"dependencies": {
-		"@token-ring/ai-client": "0.1.0",
-
-		"@token-ring/history": "0.1.0",
-		"@token-ring/registry": "0.1.0"
-	},
-	"exports": {
-		".": "./index.ts",
-		"./*": "./*.ts"
-	},
-	"license": "MIT",
-	"scripts": {
-
-
-	},
-	"type": "module"
+ "dependencies": {
+  "@token-ring/ai-client": "0.1.0",
+  "@token-ring/history": "0.1.0",
+  "@token-ring/registry": "0.1.0"
+ },
+ "exports": {
+  ".": "./index.ts",
+  "./*": "./*.ts"
+ },
+ "license": "MIT",
+ "scripts": {
+ },
+ "type": "module"
 }

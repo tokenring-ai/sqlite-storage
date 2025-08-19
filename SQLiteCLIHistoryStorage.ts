@@ -13,7 +13,6 @@ import HistoryStorage, {HistoryConfig} from "@token-ring/chat/HistoryStorage";
  * Database Schema:
  * - CommandHistory table with id, command, and timestamp columns
  *
- * @extends HistoryStorage
  */
 
 // Interface for database row structure

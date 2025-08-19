@@ -1,6 +1,6 @@
 import {ChatMessageStorage} from "@token-ring/ai-client";
 import {StoredChatMessage} from "@token-ring/ai-client/ChatMessageStorage";
-import {Body, Response} from "@token-ring/chat/ChatService";
+import {AIResponse, ChatRequest} from "@token-ring/ai-client/client/AIChatClient";
 
 /**
  * SQLite-based implementation of ChatMessageStorage that provides persistent
@@ -17,7 +17,6 @@ import {Body, Response} from "@token-ring/chat/ChatService";
  * - ChatMessage table with id, sessionId, previousMessageId, request, response,
  *   cumulativeInputLength, createdAt, and updatedAt columns.
  *
- * @extends ChatMessageStorage
  */
 export default class SQLiteChatMessageStorage extends ChatMessageStorage {
   /** The SQLite database connection. */
@@ -47,7 +46,7 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
    * @returns The stored message with parsed request and response.
    * @throws {Error} If the database operation fails.
    */
-  async storeChat(currentMessage: StoredChatMessage, request: Body, response: Response): Promise<StoredChatMessage> {
+  async storeChat(currentMessage: StoredChatMessage, request: ChatRequest, response: AIResponse): Promise<StoredChatMessage> {
     let sessionId: number;
     if (currentMessage?.sessionId) {
       sessionId = parseInt(currentMessage.sessionId);
@@ -55,15 +54,16 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
       const lastMessage = request.messages?.[request.messages.length - 1];
 
       const title =
-        lastMessage?.content?.replace(/^(.{1,100})(\s.*|$)/, (_: unknown, a: string) => a) ??
-        "New Chat";
+        typeof lastMessage?.content === "string"
+          ? lastMessage.content.replace(/^(.{1,100})(\s.*|$)/, (_, a: string) => a)
+          : "New Chat";
 
       const chatSession = this.db
         .prepare(`
-        INSERT INTO ChatSession (title)
-        VALUES (?)
-        RETURNING *
-      `)
+         INSERT INTO ChatSession (title)
+         VALUES (?)
+         RETURNING id
+        `)
         .get(title);
 
       sessionId = chatSession.id;
@@ -72,11 +72,11 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
     const msg = this.db
       .prepare(
         `INSERT INTO ChatMessage (sessionId,
-                             previousMessageId,
-                             request,
-                             response)
-       VALUES (?, ?, ?, ?)
-       RETURNING id, sessionId, previousMessageId, request, response`,
+                                  previousMessageId,
+                                  request,
+                                  response)
+         VALUES (?, ?, ?, ?)
+         RETURNING id, sessionId, previousMessageId, request, response`,
       )
       .get(
         sessionId,
@@ -100,8 +100,8 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
     const data = this.db
       .prepare(
         `SELECT *
-       FROM ChatMessage
-       WHERE id = ?`,
+         FROM ChatMessage
+         WHERE id = ?`,
       )
       .get(id);
 
