@@ -1,4 +1,4 @@
-# @token-ring/sqlite-storage
+# @tokenring-ai/sqlite-storage
 
 SQLite-backed storage adapters for the Token Ring ecosystem. This package provides concrete implementations for
 persisting chat messages, browsing chat history, creating/restoring checkpoints, and recording CLI command history using
@@ -9,15 +9,15 @@ It also includes a small helper to initialize a local database file with the req
 ## What this package offers
 
 - SQLiteChatMessageStorage
-- Persists chat sessions and messages implementing @token-ring/ai-client ChatMessageStorage.
+- Persists chat sessions and messages implementing @tokenring-ai/ai-client ChatMessageStorage.
 - Creates ChatSession records as needed and stores ChatMessage request/response JSON.
 - SQLiteChatHistoryStorage
-- Implements @token-ring/history ChatHistoryService to list sessions, recent messages, full thread trees, simple LIKE
+- Implements @tokenring-ai/history ChatHistoryService to list sessions, recent messages, full thread trees, simple LIKE
   search, and reconstruct history by message id (recursive CTE).
 - SQLiteChatCheckpointStorage
-- Implements @token-ring/history CheckpointService to create/list/retrieve checkpoints linked to specific messages.
+- Implements @tokenring-ai/history CheckpointService to create/list/retrieve checkpoints linked to specific messages.
 - SQLiteCLIHistoryStorage
-- Implements @token-ring/chat HistoryStorage for shell/CLI command history (keeps most recent N commands, defaults to
+- Implements @tokenring-ai/chat HistoryStorage for shell/CLI command history (keeps most recent N commands, defaults to
   200).
 - db/initializeLocalDatabase
 - Helper to open a SQLite database via bun:sqlite and apply the schema from db/db.sql.
@@ -43,16 +43,16 @@ From index.ts and sub-path exports:
 - SQLiteChatHistoryStorage
 - SQLiteChatCheckpointStorage
 - SQLiteCLIHistoryStorage
-- db/initializeLocalDatabase (path: @token-ring/sqlite-storage/db/initializeLocalDatabase)
+- db/initializeLocalDatabase (path: @tokenring-ai/sqlite-storage/db/initializeLocalDatabase)
 
 ## Installation
 
 This package is part of the monorepo and typically consumed by the Token Ring runtime. If you need it directly in a
 workspace:
 
-- Add dependency: "@token-ring/sqlite-storage": "0.1.0"
+- Add dependency: "@tokenring-ai/sqlite-storage": "0.1.0"
 - Runtime: requires Bun, as it uses bun:sqlite.
-- Peer packages: @token-ring/ai-client, @token-ring/history, @token-ring/chat, @token-ring/registry as used by your
+- Peer packages: @tokenring-ai/ai-client, @tokenring-ai/history, @tokenring-ai/chat, @tokenring-ai/registry as used by your
   application.
 
 ## Usage
@@ -60,7 +60,7 @@ workspace:
 ### Initialize a local SQLite database
 
 ```ts
-import initializeLocalDatabase from "@token-ring/sqlite-storage/db/initializeLocalDatabase";
+import initializeLocalDatabase from "@tokenring-ai/sqlite-storage/db/initializeLocalDatabase";
 
 const dbFile = "/path/to/tokenring.sqlite"; // will be created if missing
 const db = initializeLocalDatabase(dbFile);
@@ -69,8 +69,8 @@ const db = initializeLocalDatabase(dbFile);
 ### Persist chat messages
 
 ```ts
-import {SQLiteChatMessageStorage} from "@token-ring/sqlite-storage";
-import {ChatMessageStorage} from "@token-ring/ai-client";
+import {SQLiteChatMessageStorage} from "@tokenring-ai/sqlite-storage";
+import {ChatMessageStorage} from "@tokenring-ai/ai-client";
 
 const messageStorage: ChatMessageStorage = new SQLiteChatMessageStorage({db});
 
@@ -88,10 +88,10 @@ const again = await messageStorage.retrieveMessageById(stored.id);
 ### Browse chat history and checkpoints via services
 
 ```ts
-import {ServiceRegistry} from "@token-ring/registry";
-import {ChatService} from "@token-ring/chat";
-import {chatCommands, ChatHistoryService, CheckpointService} from "@token-ring/history";
-import {SQLiteChatHistoryStorage, SQLiteChatCheckpointStorage} from "@token-ring/sqlite-storage";
+import {ServiceRegistry} from "@tokenring-ai/registry";
+import {ChatService} from "@tokenring-ai/chat";
+import {chatCommands, ChatHistoryService, CheckpointService} from "@tokenring-ai/history";
+import {SQLiteChatHistoryStorage, SQLiteChatCheckpointStorage} from "@tokenring-ai/sqlite-storage";
 
 const registry = new ServiceRegistry();
 await registry.start();
@@ -110,7 +110,7 @@ await chatCommands.history.execute(undefined, registry);
 ### CLI command history
 
 ```ts
-import {SQLiteCLIHistoryStorage} from "@token-ring/sqlite-storage";
+import {SQLiteCLIHistoryStorage} from "@tokenring-ai/sqlite-storage";
 
 const cliHistory = new SQLiteCLIHistoryStorage({db, config: {limit: 200}});
 cliHistory.init();

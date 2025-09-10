@@ -1,11 +1,11 @@
-import {StoredChatMessage} from "@token-ring/ai-client/ChatMessageStorage";
-import CheckpointService, {Checkpoint} from "@token-ring/history/CheckpointService";
+import {StoredChatMessage} from "@tokenring-ai/ai-client/ChatMessageStorage";
+import CheckpointService, {Checkpoint} from "@tokenring-ai/history/CheckpointService";
 // @ts-ignore
 import {Database} from "bun:sqlite";
 
 /**
  * SQLite-based implementation of CheckpointService that provides persistent
- * storage for conversation checkpoints using a SQLite database.
+ * storage for conversation checkpoints using an SQLite database.
  *
  * This implementation:
  * - Persists checkpoints to disk for durability across application restarts.
@@ -36,10 +36,10 @@ export default class SQLiteChatCheckpointStorage extends CheckpointService {
    * @throws {Error} When db object is not provided.
    */
   constructor({db}: { db: Database }) {
-    super();
     if (!db) {
       throw new Error("Missing db object in constructor");
     }
+    super();
     this.db = db;
   }
 

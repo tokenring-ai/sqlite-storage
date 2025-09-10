@@ -1,6 +1,6 @@
-import {ChatMessageStorage} from "@token-ring/ai-client";
-import {StoredChatMessage} from "@token-ring/ai-client/ChatMessageStorage";
-import {AIResponse, ChatRequest} from "@token-ring/ai-client/client/AIChatClient";
+import {ChatMessageStorage} from "@tokenring-ai/ai-client";
+import {StoredChatMessage} from "@tokenring-ai/ai-client/ChatMessageStorage";
+import {AIResponse, ChatRequest} from "@tokenring-ai/ai-client/client/AIChatClient";
 
 /**
  * SQLite-based implementation of ChatMessageStorage that provides persistent
@@ -30,10 +30,10 @@ export default class SQLiteChatMessageStorage extends ChatMessageStorage {
    * @throws {Error} When db object is not provided.
    */
   constructor({db}: { db: any }) {
-    super();
     if (!db) {
       throw new Error("Missing db object in constructor");
     }
+    super();
     this.db = db;
   }
 

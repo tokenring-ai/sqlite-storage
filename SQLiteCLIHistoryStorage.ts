@@ -1,4 +1,4 @@
-import HistoryStorage, {HistoryConfig} from "@token-ring/chat/HistoryStorage";
+import HistoryStorage, {HistoryConfig} from "@tokenring-ai/agent/HistoryStorage";
 
 /**
  * SQLite-based implementation of HistoryStorage that provides persistent
