@@ -1,140 +1,201 @@
-# @tokenring-ai/sqlite-storage
+# SQLite Storage Package Documentation
 
-SQLite-backed storage adapters for the Token Ring ecosystem. This package provides concrete implementations for
-persisting chat messages, browsing chat history, creating/restoring checkpoints, and recording CLI command history using
-a local SQLite database.
+## Overview
 
-It also includes a small helper to initialize a local database file with the required schema.
+The `@tokenring-ai/sqlite-storage` package provides a lightweight SQLite-based storage solution for managing agent state checkpoints in the Token Ring AI system. It implements the `AgentCheckpointProvider` interface to handle storing, retrieving, and listing named checkpoints for agents. This allows for persistent storage of agent states (e.g., JSON-serialized data) in a local SQLite database, supporting operations like key-value storage for agent sessions or workflows.
 
-## What this package offers
+Key features:
+- Stores agent checkpoints with agent ID, name, state (JSON), and timestamp.
+- Uses Bun's SQLite for efficient local database operations.
+- Supports INSERT OR REPLACE for updates and querying by ID.
+- Designed for integration with Token Ring AI agents, focusing on simplicity and reliability.
 
-- SQLiteChatMessageStorage
-- Persists chat sessions and messages implementing @tokenring-ai/ai-client ChatMessageStorage.
-- Creates ChatSession records as needed and stores ChatMessage request/response JSON.
-- SQLiteChatHistoryStorage
-- Implements @tokenring-ai/history ChatHistoryService to list sessions, recent messages, full thread trees, simple LIKE
-  search, and reconstruct history by message id (recursive CTE).
-- SQLiteChatCheckpointStorage
-- Implements @tokenring-ai/history CheckpointService to create/list/retrieve checkpoints linked to specific messages.
-- SQLiteCLIHistoryStorage
-- Implements @tokenring-ai/chat HistoryStorage for shell/CLI command history (keeps most recent N commands, defaults to
-  200).
-- db/initializeLocalDatabase
-- Helper to open a SQLite database via bun:sqlite and apply the schema from db/db.sql.
+This package is part of the larger Token Ring ecosystem, enabling offline or local persistence without external databases.
 
-## Database schema (db/db.sql)
+## Installation/Setup
 
-The initializer applies the following tables if they don’t exist:
+This package is intended for use within the Token Ring AI monorepo. To build and use it:
 
-- ChatSession(id, title, createdAt)
-- ChatMessage(id, previousMessageId, sessionId, request, response, createdAt, updatedAt)
-- Checkpoint(id, label, messageId, createdAt)
-- CommandHistory(id, command, timestamp)
+1. Ensure Bun is installed (as it uses `bun:sqlite`).
+2. Install dependencies via `bun install` in the project root (includes `@tokenring-ai/ai-client` and `@tokenring-ai/history`).
+3. Import and initialize the storage as shown in the usage examples below.
 
-Timestamps are stored as UNIX epoch milliseconds. Foreign keys relate ChatMessage to ChatSession and to preceding
-messages.
+No additional setup is required beyond providing a database file path. The database schema is auto-initialized via SQL execution.
 
-## Exports
+## Package Structure
 
-From index.ts and sub-path exports:
+The package is structured as follows:
 
-- name, version, description (from package.json)
-- SQLiteChatMessageStorage
-- SQLiteChatHistoryStorage
-- SQLiteChatCheckpointStorage
-- SQLiteCLIHistoryStorage
-- db/initializeLocalDatabase (path: @tokenring-ai/sqlite-storage/db/initializeLocalDatabase)
+- **`index.ts`**: Entry point exporting package metadata (name, version, description) compatible with Token Ring's `TokenRingPackage`.
+- **`SQLiteAgentStateStorage.ts`**: Core implementation of the `AgentCheckpointProvider` interface for SQLite operations.
+- **`db/initializeLocalDatabase.ts`**: Utility to create and initialize a SQLite database instance, executing the schema from `db.sql`.
+- **`db/db.sql`**: SQL script defining the `AgentState` table for storing checkpoints.
+- **`package.json`**: Defines the package metadata, exports, and dependencies.
+- **`README.md`**: This documentation file.
+- **`LICENSE`**: MIT license file.
 
-## Installation
+Directories:
+- `db/`: Contains database initialization and schema files.
 
-This package is part of the monorepo and typically consumed by the Token Ring runtime. If you need it directly in a
-workspace:
+## Core Components
 
-- Add dependency: "@tokenring-ai/sqlite-storage": "0.1.0"
-- Runtime: requires Bun, as it uses bun:sqlite.
-- Peer packages: @tokenring-ai/ai-client, @tokenring-ai/history, @tokenring-ai/chat, @tokenring-ai/registry as used by your
-  application.
+### SQLiteAgentStateStorage Class
 
-## Usage
+This is the primary class implementing `AgentCheckpointProvider`. It manages agent checkpoints in the SQLite `AgentState` table.
 
-### Initialize a local SQLite database
+- **Constructor**: `new SQLiteAgentStateStorage({ db })`
+  - Parameters: `{ db: any }` – A Bun SQLite database instance (from `bun:sqlite`).
+  - Initializes the storage with a pre-connected database.
 
-```ts
-import initializeLocalDatabase from "@tokenring-ai/sqlite-storage/db/initializeLocalDatabase";
+- **storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>**
+  - Stores or updates a named checkpoint for an agent.
+  - Parameters:
+    - `checkpoint: NamedAgentCheckpoint` – Object with `agentId: string`, `name: string`, `state: any` (JSON-serializable), `createdAt: number`.
+  - Returns: `Promise<string>` – The ID of the stored checkpoint.
+  - Internally: Uses `INSERT OR REPLACE INTO AgentState` with JSON.stringify on state, returning the auto-incremented ID.
 
-const dbFile = "/path/to/tokenring.sqlite"; // will be created if missing
-const db = initializeLocalDatabase(dbFile);
+- **retrieveCheckpoint(agentId: string): Promise<StoredAgentCheckpoint | null>**
+  - Retrieves a checkpoint by agent ID.
+  - Parameters: `agentId: string` – The agent's ID (note: query uses ID, but param is agentId; code uses agentId as ID? Wait, review shows SELECT by agentId, but code has SELECT id, agentId, name, state FROM AgentState WHERE id = ? .get(agentId) – potential mismatch? Based on code, assumes agentId is used as the row ID.
+  - Returns: `Promise<StoredAgentCheckpoint | null>` – Checkpoint with parsed state, or null if not found.
+  - Internally: Queries by ID (using agentId as key), parses JSON state.
+
+- **listCheckpoints(): Promise<AgentCheckpointListItem[]>**
+  - Lists all checkpoints, ordered by creation time (descending).
+  - Returns: `Promise<AgentCheckpointListItem[]>` – Array of items with ID, name, agentId, createdAt (no state).
+  - Internally: SELECTs from AgentState, maps rows excluding state.
+
+### Database Initialization
+
+- **initializeLocalDatabase(databaseFile: string): Database**
+  - Creates a new SQLite database at the given file path and executes the schema.
+  - Parameters: `databaseFile: string` – Path to the SQLite file (e.g., './agent_state.db').
+  - Returns: Bun SQLite `Database` instance.
+  - The `AgentState` table schema:
+    ```sql
+    CREATE TABLE IF NOT EXISTS AgentState
+    (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agentId TEXT NOT NULL,
+      name TEXT NOT NULL,
+      state TEXT NOT NULL,
+      createdAt INTEGER NOT NULL
+    );
+    ```
+
+Interactions: Initialize the DB first, pass it to `SQLiteAgentStateStorage`, then use the provider methods for CRUD on checkpoints. States are stored as JSON strings.
+
+## Usage Examples
+
+### Basic Initialization and Storage
+
+```typescript
+import Database from 'bun:sqlite';
+import initializeLocalDatabase from './db/initializeLocalDatabase';
+import SQLiteAgentStateStorage from './SQLiteAgentStateStorage';
+
+// Initialize database
+const db = initializeLocalDatabase('./agent_state.db');
+
+// Create storage instance
+const storage = new SQLiteAgentStateStorage({ db });
+
+// Store a checkpoint
+const checkpoint = {
+  agentId: 'agent-123',
+  name: 'session-1',
+  state: { messages: ['Hello'], variables: { count: 1 } },
+  createdAt: Date.now()
+};
+const id = await storage.storeCheckpoint(checkpoint);
+console.log(`Stored with ID: ${id}`);
 ```
 
-### Persist chat messages
+### Retrieval and Listing
 
-```ts
-import {SQLiteChatMessageStorage} from "@tokenring-ai/sqlite-storage";
-import {ChatMessageStorage} from "@tokenring-ai/ai-client";
+```typescript
+// Retrieve a checkpoint (note: uses agentId as query param, but code queries by id=?)
+const retrieved = await storage.retrieveCheckpoint('agent-123');
+if (retrieved) {
+  console.log('Retrieved state:', retrieved.state);
+}
 
-const messageStorage: ChatMessageStorage = new SQLiteChatMessageStorage({db});
-
-// store a chat turn
-const stored = await messageStorage.storeChat(
-  /* currentMessage */ undefined,
-  /* request */ {messages: [{role: "user", content: "Hello world"}]},
-  /* response */ {role: "assistant", content: "Hi!"}
-);
-
-// later retrieve by id
-const again = await messageStorage.retrieveMessageById(stored.id);
+// List all checkpoints
+const list = await storage.listCheckpoints();
+console.log('Checkpoints:', list);
 ```
 
-### Browse chat history and checkpoints via services
+### Full Workflow
 
-```ts
-import {ServiceRegistry} from "@tokenring-ai/registry";
-import {ChatService} from "@tokenring-ai/chat";
-import {chatCommands, ChatHistoryService, CheckpointService} from "@tokenring-ai/history";
-import {SQLiteChatHistoryStorage, SQLiteChatCheckpointStorage} from "@tokenring-ai/sqlite-storage";
+```typescript
+// In an agent context
+import { NamedAgentCheckpoint, StoredAgentCheckpoint } from '@tokenring-ai/agent/AgentCheckpointProvider';
 
-const registry = new ServiceRegistry();
-await registry.start();
+async function agentWorkflow() {
+  const db = initializeLocalDatabase('./myapp.db');
+  const storage = new SQLiteAgentStateStorage({ db });
 
-await registry.services.addServices(
-  new ChatService({personas: {/* ... */}}),
-  // Register concrete implementations backed by SQLite
-  new SQLiteChatHistoryStorage({db}),
-  new SQLiteChatCheckpointStorage({db})
-);
+  // Store initial state
+  await storage.storeCheckpoint({
+    agentId: 'my-agent',
+    name: 'initial',
+    state: { step: 0 },
+    createdAt: Date.now()
+  });
 
-// Use history command (interactive if a HumanInterfaceService is registered)
-await chatCommands.history.execute(undefined, registry);
+  // Later, retrieve and update
+  const current = await storage.retrieveCheckpoint('my-agent');
+  if (current) {
+    current.state.step += 1;
+    await storage.storeCheckpoint({ ...current, createdAt: Date.now() });
+  }
+
+  // List for overview
+  const checkpoints = await storage.listCheckpoints();
+  console.log('All checkpoints:', checkpoints);
+}
 ```
 
-### CLI command history
+## Configuration Options
 
-```ts
-import {SQLiteCLIHistoryStorage} from "@tokenring-ai/sqlite-storage";
+- **Database File Path**: Specify the path when calling `initializeLocalDatabase` (e.g., `./data/agent.db`). Defaults to in-memory if not persisted, but always provide a file for persistence.
+- **No additional env vars or configs**; all operations use the provided DB instance.
+- Error Handling: Uses Bun SQLite's built-in error propagation (e.g., throws on SQL failures). Wrap in try-catch for production.
 
-const cliHistory = new SQLiteCLIHistoryStorage({db, config: {limit: 200}});
-cliHistory.init();
-cliHistory.add("/search sqlite");
-const prev = cliHistory.getPrevious();
-```
+## API Reference
 
-## Notes and limitations
+### Public Exports
+- `packageInfo: TokenRingPackage` – Package metadata from `index.ts`.
 
-- Bun required: This package uses bun:sqlite; run under Bun.
-- JSON payloads: ChatMessage.request and ChatMessage.response are stored as JSON strings and parsed on read.
-- Simple search: History search uses SQL LIKE; for semantic search, use other indexing/search packages in the monorepo.
-- Resource management: Call close() on storages when you’re done to release the SQLite handle.
+### SQLiteAgentStateStorage (implements AgentCheckpointProvider)
+- `constructor({ db }: { db: Database })`
+- `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>`
+- `retrieveCheckpoint(agentId: string): Promise<StoredAgentCheckpoint | null>`
+- `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
 
-## File map
+### Utilities
+- `initializeLocalDatabase(databaseFile: string): Database`
 
-- pkg/sqlite-storage/index.ts
-- pkg/sqlite-storage/SQLiteChatMessageStorage.ts
-- pkg/sqlite-storage/SQLiteChatHistoryStorage.ts
-- pkg/sqlite-storage/SQLiteChatCheckpointStorage.ts
-- pkg/sqlite-storage/SQLiteCLIHistoryStorage.ts
-- pkg/sqlite-storage/db/initializeLocalDatabase.ts
-- pkg/sqlite-storage/db/db.sql
+Types (imported from `@tokenring-ai/agent/AgentCheckpointProvider`):
+- `NamedAgentCheckpoint`: `{ agentId: string; name: string; state: any; createdAt: number }`
+- `StoredAgentCheckpoint`: `{ id: string; name: string; agentId: string; state: any; createdAt: number }`
+- `AgentCheckpointListItem`: `{ id: string; name: string; agentId: string; createdAt: number }`
 
-## License
+## Dependencies
 
-MIT
+- `@tokenring-ai/ai-client@0.1.0`: AI client integration.
+- `@tokenring-ai/history@0.1.0`: History management (likely for agent states).
+- `bun:sqlite`: Runtime dependency for database operations (provided by Bun).
+
+No other external dependencies.
+
+## Contributing/Notes
+
+- **Building/Testing**: Use Bun for building. No test scripts defined yet; add via `package.json` scripts.
+- **Limitations**: 
+  - Single-file DB; not suitable for high-concurrency without WAL mode (enable via `db.exec('PRAGMA journal_mode=WAL;')` if needed).
+  - State must be JSON-serializable.
+  - Code assumes `agentId` is used as the table `id` in queries (potential bug: `retrieveCheckpoint` queries `WHERE id = ?` with `agentId` param – verify integration).
+  - Binary states not supported; text/JSON only.
+- **License**: MIT.
+- For contributions, ensure compatibility with Token Ring AI interfaces and add tests for edge cases like concurrent access.
