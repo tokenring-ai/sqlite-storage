@@ -47,8 +47,8 @@ export default class SQLiteAgentStateStorage implements AgentCheckpointProvider 
   }
 
   async listCheckpoints(): Promise<AgentCheckpointListItem[]> {
-    const rows: Omit<AgentStateRow,"state">[] = this.db.prepare(`
-      SELECT id, name, createdAt FROM AgentState ORDER BY createdAt DESC
+    const rows: AgentStateRow[] = this.db.prepare(`
+      SELECT id, agentId, name, createdAt FROM AgentState ORDER BY createdAt DESC
     `).all();
     
     return rows.map((row) => ({
