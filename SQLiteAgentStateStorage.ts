@@ -1,8 +1,11 @@
+import path from "node:path";
 import {
   AgentCheckpointListItem,
   AgentCheckpointProvider,
   NamedAgentCheckpoint, StoredAgentCheckpoint
-} from "@tokenring-ai/agent/AgentCheckpointProvider";
+} from "@tokenring-ai/checkpoint/AgentCheckpointProvider";
+import {z} from "zod";
+import initializeLocalDatabase from "./db/initializeLocalDatabase.js";
 
 type AgentStateRow = {
   id: number;
@@ -12,11 +15,15 @@ type AgentStateRow = {
   createdAt: number;
 };
 
+export const SQLiteAgentStateStorageConfigSchema = z.object({
+  databasePath: z.string()
+});
+
 export default class SQLiteAgentStateStorage implements AgentCheckpointProvider {
   private db: any;
 
-  constructor({db}: {db: any}) {
-    this.db = db;
+  constructor({databasePath}: z.infer<typeof SQLiteAgentStateStorageConfigSchema>) {
+    this.db = initializeLocalDatabase(databasePath);
   }
 
   async storeCheckpoint(checkpoint: NamedAgentCheckpoint) : Promise<string> {
