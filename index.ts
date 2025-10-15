@@ -19,7 +19,7 @@ export const packageInfo: TokenRingPackage = {
             checkpointService.registerProvider(name, new SQLiteAgentStateStorage(SQLiteAgentStateStorageConfigSchema.parse(provider)));
           }
         }
-      });
+      }).catch(console.error);
     }
   }
 };

@@ -1,4 +1,4 @@
-import path from "node:path";
+import type Database from "bun:sqlite";
 import {
   AgentCheckpointListItem,
   AgentCheckpointProvider,
@@ -16,29 +16,58 @@ type AgentStateRow = {
 };
 
 export const SQLiteAgentStateStorageConfigSchema = z.object({
-  databasePath: z.string()
+  databasePath: z.string(),
+  busyTimeout: z.number().optional(),
+  maxRetries: z.number().optional(),
+  retryDelayMs: z.number().optional(),
 });
 
 export default class SQLiteAgentStateStorage implements AgentCheckpointProvider {
-  private db: any;
+  private db: Database;
+  private readonly maxRetries: number;
+  private readonly retryDelayMs: number;
 
-  constructor({databasePath}: z.infer<typeof SQLiteAgentStateStorageConfigSchema>) {
+  constructor({databasePath, busyTimeout = 5000, maxRetries = 3, retryDelayMs = 100}: z.infer<typeof SQLiteAgentStateStorageConfigSchema>) {
     this.db = initializeLocalDatabase(databasePath);
+    this.maxRetries = maxRetries;
+    this.retryDelayMs = retryDelayMs
+    
+    // Enable WAL mode for better concurrency
+    this.db.prepare('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = ?').run(busyTimeout);
+  }
+
+  private async retryOnBusy<T>(operation: () => T): Promise<T> {
+    for (let i = 0; i < this.maxRetries; i++) {
+      try {
+        return operation();
+      } catch (error: any) {
+        if (error.code === 'SQLITE_BUSY' && i < this.maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, this.retryDelayMs * (i + 1)));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error('Max retries reached');
   }
 
   async storeCheckpoint(checkpoint: NamedAgentCheckpoint) : Promise<string> {
-    const row: AgentStateRow = this.db.prepare(`
-      INSERT OR REPLACE INTO AgentState (agentId, name, state, createdAt)
-      VALUES (?, ?, ?,?)
-      RETURNING id
-    `).get(checkpoint.agentId, checkpoint.name, JSON.stringify(checkpoint.state), checkpoint.createdAt);
+    const row = await this.retryOnBusy(() =>
+      this.db.prepare(`
+        INSERT OR REPLACE INTO AgentState (agentId, name, state, createdAt)
+        VALUES (?, ?, ?,?)
+        RETURNING id
+      `).get(checkpoint.agentId, checkpoint.name, JSON.stringify(checkpoint.state), checkpoint.createdAt)
+    ) as AgentStateRow;
     return row.id.toString();
   }
 
   async retrieveCheckpoint(agentId: string): Promise<StoredAgentCheckpoint|null> {
-    const row: AgentStateRow = this.db.prepare(`
-      SELECT id, agentId, name, state FROM AgentState WHERE id = ?
-    `).get(agentId);
+    const row= await this.retryOnBusy(() =>
+      this.db.prepare(`
+        SELECT id, agentId, name, state FROM AgentState WHERE id = ?
+      `).get(agentId)
+    ) as AgentStateRow | undefined;
     
     if (row) {
       return {
@@ -54,9 +83,11 @@ export default class SQLiteAgentStateStorage implements AgentCheckpointProvider 
   }
 
   async listCheckpoints(): Promise<AgentCheckpointListItem[]> {
-    const rows: AgentStateRow[] = this.db.prepare(`
-      SELECT id, agentId, name, createdAt FROM AgentState ORDER BY createdAt DESC
-    `).all();
+    const rows = await this.retryOnBusy(() =>
+      this.db.prepare(`
+        SELECT id, agentId, name, createdAt FROM AgentState ORDER BY createdAt DESC
+      `).all()
+    ) as AgentStateRow[];
     
     return rows.map((row) => ({
       id: row.id.toString(),

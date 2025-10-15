@@ -43,9 +43,14 @@ Directories:
 
 This is the primary class implementing `AgentCheckpointProvider`. It manages agent checkpoints in the SQLite `AgentState` table.
 
-- **Constructor**: `new SQLiteAgentStateStorage({ db })`
-  - Parameters: `{ db: any }` – A Bun SQLite database instance (from `bun:sqlite`).
-  - Initializes the storage with a pre-connected database.
+- **Constructor**: `new SQLiteAgentStateStorage({ databasePath, busyTimeout?, maxRetries?, retryDelayMs? })`
+  - Parameters:
+    - `databasePath: string` – Path to the SQLite database file (required)
+    - `busyTimeout?: number` – SQLite busy timeout in milliseconds (default: 5000)
+    - `maxRetries?: number` – Maximum retry attempts for busy database (default: 3)
+    - `retryDelayMs?: number` – Base delay between retries in milliseconds (default: 100)
+  - Initializes the database with WAL mode enabled for better concurrency
+  - Implements exponential backoff retry logic for SQLITE_BUSY errors
 
 - **storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>**
   - Stores or updates a named checkpoint for an agent.
@@ -90,15 +95,20 @@ Interactions: Initialize the DB first, pass it to `SQLiteAgentStateStorage`, the
 ### Basic Initialization and Storage
 
 ```typescript
-import Database from 'bun:sqlite';
-import initializeLocalDatabase from './db/initializeLocalDatabase';
 import SQLiteAgentStateStorage from './SQLiteAgentStateStorage';
 
-// Initialize database
-const db = initializeLocalDatabase('./agent_state.db');
+// Create storage instance with default options
+const storage = new SQLiteAgentStateStorage({ 
+  databasePath: './agent_state.db' 
+});
 
-// Create storage instance
-const storage = new SQLiteAgentStateStorage({ db });
+// Or with custom configuration
+const storage = new SQLiteAgentStateStorage({ 
+  databasePath: './agent_state.db',
+  busyTimeout: 10000,
+  maxRetries: 5,
+  retryDelayMs: 200
+});
 
 // Store a checkpoint
 const checkpoint = {
@@ -129,11 +139,13 @@ console.log('Checkpoints:', list);
 
 ```typescript
 // In an agent context
-import { NamedAgentCheckpoint, StoredAgentCheckpoint } from '@tokenring-ai/agent/AgentCheckpointProvider';
+import { NamedAgentCheckpoint, StoredAgentCheckpoint } from '@tokenring-ai/checkpoint/AgentCheckpointProvider';
+import SQLiteAgentStateStorage from './SQLiteAgentStateStorage';
 
 async function agentWorkflow() {
-  const db = initializeLocalDatabase('./myapp.db');
-  const storage = new SQLiteAgentStateStorage({ db });
+  const storage = new SQLiteAgentStateStorage({ 
+    databasePath: './myapp.db' 
+  });
 
   // Store initial state
   await storage.storeCheckpoint({
@@ -158,9 +170,23 @@ async function agentWorkflow() {
 
 ## Configuration Options
 
-- **Database File Path**: Specify the path when calling `initializeLocalDatabase` (e.g., `./data/agent.db`). Defaults to in-memory if not persisted, but always provide a file for persistence.
-- **No additional env vars or configs**; all operations use the provided DB instance.
-- Error Handling: Uses Bun SQLite's built-in error propagation (e.g., throws on SQL failures). Wrap in try-catch for production.
+The `SQLiteAgentStateStorage` constructor accepts the following configuration options:
+
+- **databasePath** (required): `string` – Path to the SQLite database file (e.g., `./data/agent.db`)
+- **busyTimeout** (optional): `number` – SQLite busy timeout in milliseconds (default: 5000). Controls how long SQLite waits when the database is locked.
+- **maxRetries** (optional): `number` – Maximum number of retry attempts for SQLITE_BUSY errors (default: 3)
+- **retryDelayMs** (optional): `number` – Base delay between retries in milliseconds (default: 100). Uses exponential backoff: delay × (attempt + 1)
+
+**Concurrency Features:**
+- WAL (Write-Ahead Logging) mode is automatically enabled for better concurrent access
+- Automatic retry logic with exponential backoff for busy database scenarios
+- Configurable busy timeout and retry parameters
+
+**Error Handling:**
+- Automatically retries on SQLITE_BUSY errors up to `maxRetries` times
+- Throws error after max retries exceeded
+- Other SQLite errors propagate immediately
+- Wrap operations in try-catch for production use
 
 ## API Reference
 
@@ -168,7 +194,7 @@ async function agentWorkflow() {
 - `packageInfo: TokenRingPackage` – Package metadata from `index.ts`.
 
 ### SQLiteAgentStateStorage (implements AgentCheckpointProvider)
-- `constructor({ db }: { db: Database })`
+- `constructor({ databasePath, busyTimeout?, maxRetries?, retryDelayMs? })`
 - `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>`
 - `retrieveCheckpoint(agentId: string): Promise<StoredAgentCheckpoint | null>`
 - `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
@@ -192,10 +218,10 @@ No other external dependencies.
 ## Contributing/Notes
 
 - **Building/Testing**: Use Bun for building. No test scripts defined yet; add via `package.json` scripts.
+- **Concurrency**: WAL mode is automatically enabled for better concurrent access. Configurable busy timeout and retry logic handle contention.
 - **Limitations**: 
-  - Single-file DB; not suitable for high-concurrency without WAL mode (enable via `db.exec('PRAGMA journal_mode=WAL;')` if needed).
   - State must be JSON-serializable.
-  - Code assumes `agentId` is used as the table `id` in queries (potential bug: `retrieveCheckpoint` queries `WHERE id = ?` with `agentId` param – verify integration).
   - Binary states not supported; text/JSON only.
+  - Single-file database; suitable for moderate concurrency with WAL mode enabled.
 - **License**: MIT.
 - For contributions, ensure compatibility with Token Ring AI interfaces and add tests for edge cases like concurrent access.
